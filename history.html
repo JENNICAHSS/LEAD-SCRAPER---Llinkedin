@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History — Lead Scraper</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--bg:#0b0d14;--surface:#111420;--border:#1e2236;--text:#d4d8e8;--muted:#4b5280;--blue:#3b82f6;--green:#22c55e;--red:#ef4444;}
+    body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;}
+    nav{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid var(--border);background:var(--surface);}
+    .nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;color:#f0f2ff;text-decoration:none;}
+    .nav-icon{width:32px;height:32px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+    .nav-links{display:flex;gap:8px;}
+    .nav-link{padding:8px 16px;border-radius:8px;font-size:13px;color:var(--muted);text-decoration:none;transition:0.2s;font-weight:600;}
+    .nav-link:hover{color:var(--text);background:#1a2540;}
+    .nav-link.active{color:#93c5fd;background:#1a2540;}
+    .wrap{max-width:1100px;margin:0 auto;padding:50px 20px;}
+    .page-title{font-size:32px;font-weight:800;color:#f0f2ff;letter-spacing:-1px;margin-bottom:6px;}
+    .page-sub{font-size:13px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:36px;}
+    .scrape{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden;}
+    .scrape-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer;transition:0.2s;}
+    .scrape-head:hover{background:#141829;}
+    .scrape-info{flex:1;}
+    .scrape-query{font-size:16px;font-weight:700;color:#f0f2ff;margin-bottom:3px;}
+    .scrape-date{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+    .scrape-stats{display:flex;gap:16px;align-items:center;margin-right:16px;}
+    .mini-stat{text-align:center;}
+    .mini-num{font-size:18px;font-weight:700;color:#93c5fd;}
+    .mini-label{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;}
+    .expand-arrow{font-size:12px;color:var(--muted);transition:0.2s;}
+    .del-btn{background:#1a1015;border:1px solid #3a1a1a;color:#ef4444;border-radius:7px;padding:7px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Syne',sans-serif;transition:0.2s;}
+    .del-btn:hover{background:#2a1518;border-color:#ef4444;}
+    .leads-table{display:none;border-top:1px solid var(--border);overflow-x:auto;}
+    .leads-table.open{display:block;}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    th{background:#0e1020;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;padding:10px 12px;text-align:left;font-weight:600;white-space:nowrap;}
+    td{padding:10px 12px;border-top:1px solid #161a2a;color:#b8c0d8;vertical-align:top;}
+    tr:hover td{background:#0e1020;}
+    .lead-name{font-weight:600;color:#f0f2ff;white-space:nowrap;}
+    .lead-link{color:var(--blue);text-decoration:none;}
+    .lead-link:hover{text-decoration:underline;}
+    .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-family:'JetBrains Mono',monospace;}
+    .badge.li{background:#0a66c220;color:#4593e8;}
+    .badge.web{background:#22c55e20;color:#4ade80;}
+    .badge.map{background:#ea433520;color:#f87171;}
+    .badge.mail{background:#8b5cf620;color:#a78bfa;}
+    .loading,.empty{text-align:center;padding:60px 20px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:13px;}
+    .empty-icon{font-size:40px;opacity:0.3;margin-bottom:12px;}
+    .total-bar{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:20px;}
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="nav-brand" href="index.html"><div class="nav-icon">🔎</div>Lead Scraper</a>
+    <div class="nav-links">
+      <a class="nav-link" href="index.html">Home</a>
+      <a class="nav-link" href="dashboard.html">Dashboard</a>
+      <a class="nav-link active" href="history.html">History</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <div class="page-title">Scrape History</div>
+    <div class="page-sub">Every scrape you've run — click to expand, links open directly</div>
+    <div class="total-bar" id="totalBar"></div>
+    <div id="content"><div class="loading">Loading history…</div></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://oacgorejjshlayvacorq.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_GxvJ2qdDNrQP6ckwsVdQpw_j1HQA-J2';
+    const HEADERS = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+
+    async function loadHistory() {
+      const content = document.getElementById('content');
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/scrapes?order=created_at.desc`, { headers: HEADERS });
+        const data = await res.json();
+
+        if (!data || !data.length) {
+          content.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>No scrape history yet. Run your first scrape from the extension!</div>`;
+          return;
+        }
+
+        document.getElementById('totalBar').textContent =
+          `${data.length} scrape${data.length>1?'s':''} · ${data.reduce((a,s)=>a+s.total_leads,0)} total leads collected`;
+
+        content.innerHTML = data.map(s => renderScrape(s)).join('');
+      } catch (err) {
+        content.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>Couldn't load: ${err.message}</div>`;
+      }
+    }
+
+    function renderScrape(s) {
+      const date = new Date(s.created_at).toLocaleString();
+      const leads = Array.isArray(s.leads) ? s.leads : [];
+      const rows = leads.map(l => `
+        <tr>
+          <td class="lead-name">${esc(l.name)}</td>
+          <td>${esc(l.title)}</td>
+          <td>${esc(l.company)}</td>
+          <td>${l.phone ? esc(l.phone) : '—'}</td>
+          <td>${l.email ? `<a class="lead-link" href="mailto:${esc(l.email)}">${esc(l.email)}</a>` : '—'}</td>
+          <td>${l.rating ? '⭐ '+esc(l.rating) : '—'}</td>
+          <td>${linkBadges(l)}</td>
+        </tr>`).join('');
+
+      return `
+        <div class="scrape">
+          <div class="scrape-head" onclick="toggle(this)">
+            <div class="scrape-info">
+              <div class="scrape-query">${esc(s.query)}</div>
+              <div class="scrape-date">${date}</div>
+            </div>
+            <div class="scrape-stats">
+              <div class="mini-stat"><div class="mini-num">${s.total_leads}</div><div class="mini-label">Leads</div></div>
+              <div class="mini-stat"><div class="mini-num">${s.with_phone}</div><div class="mini-label">Phone</div></div>
+              <div class="mini-stat"><div class="mini-num">${s.with_email}</div><div class="mini-label">Email</div></div>
+              <div class="mini-stat"><div class="mini-num">${s.with_linkedin}</div><div class="mini-label">LinkedIn</div></div>
+            </div>
+            <button class="del-btn" onclick="event.stopPropagation();delScrape('${s.id}',this)">🗑 Delete</button>
+            <span class="expand-arrow" style="margin-left:14px;">▼</span>
+          </div>
+          <div class="leads-table">
+            <table>
+              <thead><tr><th>Name</th><th>Title</th><th>Company</th><th>Phone</th><th>Email</th><th>Rating</th><th>Links</th></tr></thead>
+              <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:#4b5280;">No lead details stored</td></tr>'}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    function linkBadges(l) {
+      let b = '';
+      if (l.linkedin_url) b += `<a class="badge li" href="${esc(l.linkedin_url)}" target="_blank">LinkedIn</a> `;
+      if (l.website)      b += `<a class="badge web" href="${esc(l.website)}" target="_blank">Website</a> `;
+      if (l.maps_url)     b += `<a class="badge map" href="${esc(l.maps_url)}" target="_blank">Maps</a> `;
+      return b || '—';
+    }
+
+    function toggle(head) {
+      const table = head.nextElementSibling;
+      const arrow = head.querySelector('.expand-arrow');
+      table.classList.toggle('open');
+      arrow.textContent = table.classList.contains('open') ? '▲' : '▼';
+    }
+
+    async function delScrape(id, btn) {
+      if (!confirm('Delete this scrape permanently?')) return;
+      btn.textContent = '...';
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/scrapes?id=eq.${id}`, { method: 'DELETE', headers: HEADERS });
+        if (res.ok) {
+          btn.closest('.scrape').remove();
+        } else {
+          alert('Delete failed: ' + res.status); btn.textContent = '🗑 Delete';
+        }
+      } catch (err) { alert('Error: ' + err.message); btn.textContent = '🗑 Delete'; }
+    }
+
+    function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+    loadHistory();
+  </script>
+</body>
+</html>

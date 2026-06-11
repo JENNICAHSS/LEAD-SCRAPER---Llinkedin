@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Lead Scraper</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--bg:#0b0d14;--surface:#111420;--border:#1e2236;--text:#d4d8e8;--muted:#4b5280;--blue:#3b82f6;--green:#22c55e;}
+    body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;}
+    nav{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid var(--border);background:var(--surface);}
+    .nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;color:#f0f2ff;text-decoration:none;}
+    .nav-icon{width:32px;height:32px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+    .nav-links{display:flex;gap:8px;}
+    .nav-link{padding:8px 16px;border-radius:8px;font-size:13px;color:var(--muted);text-decoration:none;transition:0.2s;font-weight:600;}
+    .nav-link:hover{color:var(--text);background:#1a2540;}
+    .nav-link.active{color:#93c5fd;background:#1a2540;}
+    .wrap{max-width:1000px;margin:0 auto;padding:50px 20px;}
+    .page-title{font-size:32px;font-weight:800;color:#f0f2ff;letter-spacing:-1px;margin-bottom:6px;}
+    .page-sub{font-size:13px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:36px;}
+    .latest-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:30px;}
+    .latest-label{font-size:11px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:2px;color:var(--blue);margin-bottom:10px;}
+    .latest-query{font-size:24px;font-weight:700;color:#f0f2ff;margin-bottom:6px;}
+    .latest-date{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:24px;}
+    .stat{background:#0e1020;border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;}
+    .stat-num{font-size:36px;font-weight:800;color:#93c5fd;letter-spacing:-1px;}
+    .stat-label{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-top:6px;}
+    .bar-row{display:flex;align-items:center;gap:12px;margin-top:14px;}
+    .bar-label{font-size:12px;color:#8892b0;min-width:90px;font-family:'JetBrains Mono',monospace;}
+    .bar-track{flex:1;height:10px;background:#0e1020;border-radius:6px;overflow:hidden;}
+    .bar-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#7c3aed);border-radius:6px;transition:width 0.6s;}
+    .bar-val{font-size:12px;color:#8892b0;min-width:40px;text-align:right;font-family:'JetBrains Mono',monospace;}
+    .loading,.empty{text-align:center;padding:60px 20px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:13px;}
+    .empty-icon{font-size:40px;opacity:0.3;margin-bottom:12px;}
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="nav-brand" href="index.html"><div class="nav-icon">🔎</div>Lead Scraper</a>
+    <div class="nav-links">
+      <a class="nav-link" href="index.html">Home</a>
+      <a class="nav-link active" href="dashboard.html">Dashboard</a>
+      <a class="nav-link" href="history.html">History</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">Your most recent scrape at a glance</div>
+    <div id="content"><div class="loading">Loading latest scrape…</div></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://oacgorejjshlayvacorq.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_GxvJ2qdDNrQP6ckwsVdQpw_j1HQA-J2';
+
+    async function loadLatest() {
+      const content = document.getElementById('content');
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/scrapes?order=created_at.desc&limit=1`, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+        });
+        const data = await res.json();
+
+        if (!data || !data.length) {
+          content.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>No scrapes yet. Run your first scrape from the extension!</div>`;
+          return;
+        }
+
+        const s = data[0];
+        const date = new Date(s.created_at).toLocaleString();
+        const pct = n => s.total_leads ? Math.round(n / s.total_leads * 100) : 0;
+
+        content.innerHTML = `
+          <div class="latest-card">
+            <div class="latest-label">⚡ Latest Scrape</div>
+            <div class="latest-query">${esc(s.query)}</div>
+            <div class="latest-date">${date}</div>
+            <div class="stats-grid">
+              <div class="stat"><div class="stat-num">${s.total_leads}</div><div class="stat-label">Total Leads</div></div>
+              <div class="stat"><div class="stat-num">${s.with_phone}</div><div class="stat-label">Phones</div></div>
+              <div class="stat"><div class="stat-num">${s.with_email}</div><div class="stat-label">Emails</div></div>
+              <div class="stat"><div class="stat-num">${s.with_website}</div><div class="stat-label">Websites</div></div>
+              <div class="stat"><div class="stat-num">${s.with_linkedin}</div><div class="stat-label">LinkedIn</div></div>
+            </div>
+            <div style="margin-top:28px;">
+              ${bar('Phone', s.with_phone, pct(s.with_phone))}
+              ${bar('Email', s.with_email, pct(s.with_email))}
+              ${bar('Website', s.with_website, pct(s.with_website))}
+              ${bar('LinkedIn', s.with_linkedin, pct(s.with_linkedin))}
+            </div>
+          </div>`;
+      } catch (err) {
+        content.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>Couldn't load data: ${err.message}</div>`;
+      }
+    }
+
+    function bar(label, val, pct) {
+      return `<div class="bar-row"><span class="bar-label">${label}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div><span class="bar-val">${val} (${pct}%)</span></div>`;
+    }
+    function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+
+    loadLatest();
+  </script>
+</body>
+</html>
