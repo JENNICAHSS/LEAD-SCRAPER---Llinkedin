@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Lead Scraper",
   "version": "1.0",
-  "description": "Free lead scraper — type any search, get an Excel CSV with names, phones, emails & hours",
+  "description": "Free lead scraper — type any search, get a CSV with names, phones, emails & hours",
   "permissions": ["storage", "downloads", "tabs", "scripting"],
   "host_permissions": [
     "https://www.google.com/*",
@@ -11,19 +11,9 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Lead Scraper",
-    "default_icon": {
-      "16":  "icons/icon16.png",
-      "48":  "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
+    "default_title": "Lead Scraper"
   },
   "background": {
     "service_worker": "background.js"
-  },
-  "icons": {
-    "16":  "icons/icon16.png",
-    "48":  "icons/icon48.png",
-    "128": "icons/icon128.png"
   }
 }
